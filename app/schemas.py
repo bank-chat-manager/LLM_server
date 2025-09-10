@@ -1,8 +1,12 @@
 from pydantic import BaseModel
 from typing import List
 
-class AnalysisRequest(BaseModel):
+# A single turn in the conversation
+class ConversationTurn(BaseModel):
+    speaker: str
     text: str
+
+# The request body will be a list of these turns: List[ConversationTurn]
 
 class SummaryResponse(BaseModel):
     summary: str

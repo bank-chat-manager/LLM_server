@@ -1,6 +1,7 @@
 import httpx
 import json
-from .schemas import AnalysisRequest, SummaryResponse, TaggingResponse, EmotionResponse
+from typing import List
+from .schemas import ConversationTurn, SummaryResponse, TaggingResponse, EmotionResponse
 from core.config import settings
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 
@@ -23,7 +24,6 @@ class SentimentAnalyzer:
         self._load_model()
         result = self._pipeline(text)[0]
         label = result['label']
-        star = int(label.split()[0])
         
         # Convert star rating to sentiment
         star = int(label.split()[0])
@@ -38,6 +38,9 @@ sentiment_analyzer = SentimentAnalyzer()
 
 # --- End of Hugging Face Model ---
 
+def _format_conversation(conversation: List[ConversationTurn]) -> str:
+    """Formats a list of conversation turns into a single string."""
+    return "\n".join([f"{turn.speaker}: {turn.text}" for turn in conversation])
 
 async def _call_ollama(prompt: str) -> str:
     """Helper function to call the Ollama API and get the response."""
@@ -72,16 +75,18 @@ async def _call_ollama(prompt: str) -> str:
         except Exception as e:
             return f"알 수 없는 오류 발생: {e}"
 
-async def summarize_text(request: AnalysisRequest) -> SummaryResponse:
-    """Generates a summary for the given text using the LLM."""
-    prompt = f"다음 상담 내용을 세 문장으로 요약해줘.\n\n---\n{request.text}\n---"
+async def summarize_text(request: List[ConversationTurn]) -> SummaryResponse:
+    """Generates a summary for the given conversation using the LLM."""
+    full_text = _format_conversation(request)
+    prompt = f"다음 상담 내용을 세 문장으로 요약해줘.\n\n---\n{full_text}\n---"
     
     summary = await _call_ollama(prompt)
     
     return SummaryResponse(summary=summary)
 
-async def tag_keywords(request: AnalysisRequest) -> TaggingResponse:
-    """Extracts keywords from the given text using the LLM with a few-shot prompt."""
+async def tag_keywords(request: List[ConversationTurn]) -> TaggingResponse:
+    """Extracts keywords from the given conversation using the LLM with a few-shot prompt."""
+    full_text = _format_conversation(request)
     
     # Few-shot prompt to guide the model for better format compliance
     prompt = f'''You are a bot that extracts only the core keywords from a given text. Follow the output format exactly.
@@ -91,7 +96,7 @@ Input: 안녕하세요, 자동차 보험 갱신 때문에 전화했습니다. �
 Output: 자동차 보험, 보험료, 갱신, 할인
 
 ### Task
-Input: {request.text}
+Input: {full_text}
 Output:'''
     
     keyword_string = await _call_ollama(prompt)
@@ -100,7 +105,8 @@ Output:'''
     
     return TaggingResponse(tags=tags)
 
-async def analyze_emotion(request: AnalysisRequest) -> EmotionResponse:
-    """Analyzes the emotion of the given text using the Hugging Face model."""
-    emotion = sentiment_analyzer.analyze(request.text)
+async def analyze_emotion(request: List[ConversationTurn]) -> EmotionResponse:
+    """Analyzes the emotion of the given conversation using the Hugging Face model."""
+    full_text = _format_conversation(request)
+    emotion = sentiment_analyzer.analyze(full_text)
     return EmotionResponse(emotion=emotion)
