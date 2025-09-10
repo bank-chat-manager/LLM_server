@@ -4,6 +4,7 @@ from app.services import summarize_text
 
 router = APIRouter()
 
+print(">>> loading summary.py")
 @router.post("/summary", response_model=SummaryResponse)
 async def get_summary(request: Request):
     # Manually parse the JSON body to bypass automatic validation issues

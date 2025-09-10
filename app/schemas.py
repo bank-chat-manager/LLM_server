@@ -9,3 +9,6 @@ class SummaryResponse(BaseModel):
 
 class TaggingResponse(BaseModel):
     tags: List[str]
+
+class EmotionResponse(BaseModel):
+    emotion: str
