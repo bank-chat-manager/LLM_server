@@ -12,7 +12,7 @@ print(">>> loading services.py")
 llm_semaphore = asyncio.Semaphore(5)
 
 # --- Batch Processing Settings ---
-BATCH_SIZE = 8
+BATCH_SIZE = 16
 BATCH_TIMEOUT = 0.1 # seconds
 
 async def _call_ollama_batch(prompts: List[str]) -> List[str]:
@@ -35,7 +35,7 @@ async def _call_ollama_batch(prompts: List[str]) -> List[str]:
         # The actual API call logic is similar to the single-request version
         api_url = f"{settings.OLLAMA_API_URL}/api/generate"
         payload = {
-            "model": "gemma:2b",
+            "model": "qwen2:0.5b",
             "prompt": combined_prompt,
             "stream": False
         }
