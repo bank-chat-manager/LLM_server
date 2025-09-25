@@ -42,7 +42,7 @@ def _format_conversation(conversation: List[ConversationTurn]) -> str:
     """Formats a list of conversation turns into a single string."""
     return "\n".join([f"{turn.speaker}: {turn.text}" for turn in conversation])
 
-async def _call_ollama(prompt: str) -> str:
+def _call_ollama(prompt: str) -> str:
     """Helper function to call the Ollama API and get the response."""
     api_url = f"{settings.OLLAMA_API_URL}/api/generate"
     payload = {
@@ -51,9 +51,9 @@ async def _call_ollama(prompt: str) -> str:
         "stream": False
     }
     
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    with httpx.Client(timeout=120.0) as client:
         try:
-            response = await client.post(api_url, json=payload)
+            response = client.post(api_url, json=payload)
             response.raise_for_status()
 
             response_text = response.text
@@ -75,16 +75,16 @@ async def _call_ollama(prompt: str) -> str:
         except Exception as e:
             return f"알 수 없는 오류 발생: {e}"
 
-async def summarize_text(request: List[ConversationTurn]) -> SummaryResponse:
+def summarize_text(request: List[ConversationTurn]) -> SummaryResponse:
     """Generates a summary for the given conversation using the LLM."""
     full_text = _format_conversation(request)
     prompt = f"다음 상담 내용을 세 문장으로 요약해줘.\n\n---\n{full_text}\n---"
     
-    summary = await _call_ollama(prompt)
+    summary = _call_ollama(prompt)
     
     return SummaryResponse(summary=summary)
 
-async def tag_keywords(request: List[ConversationTurn]) -> TaggingResponse:
+def tag_keywords(request: List[ConversationTurn]) -> TaggingResponse:
     """Extracts keywords from the given conversation using the LLM with a few-shot prompt."""
     full_text = _format_conversation(request)
     
@@ -99,13 +99,13 @@ Output: 자동차 보험, 보험료, 갱신, 할인
 Input: {full_text}
 Output:'''
     
-    keyword_string = await _call_ollama(prompt)
+    keyword_string = _call_ollama(prompt)
     
     tags = [tag.strip() for tag in keyword_string.split(',') if tag.strip()]
     
     return TaggingResponse(tags=tags)
 
-async def analyze_emotion(request: List[ConversationTurn]) -> EmotionResponse:
+def analyze_emotion(request: List[ConversationTurn]) -> EmotionResponse:
     """Analyzes the emotion of the given conversation using the Hugging Face model."""
     full_text = _format_conversation(request)
     emotion = sentiment_analyzer.analyze(full_text)
