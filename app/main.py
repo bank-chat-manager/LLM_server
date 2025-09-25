@@ -1,3 +1,10 @@
+import asyncio
+import sys
+
+# Windows에서 ProactorEventLoop를 사용하도록 설정하여 "too many file descriptors" 오류 방지
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 from fastapi import FastAPI
 from app.api.endpoints import summary, tagging, emotion
 
