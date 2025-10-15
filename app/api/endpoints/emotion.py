@@ -1,10 +1,9 @@
 from fastapi import APIRouter
-from typing import List
-from app.schemas import ConversationTurn, EmotionResponse
+from app.schemas import Conversation, EmotionResponse
 from app.services import analyze_emotion
 
 router = APIRouter()
 
 @router.post("/emotion", response_model=EmotionResponse)
-async def get_emotion(request: List[ConversationTurn]):
+async def get_emotion(request: Conversation):
     return await analyze_emotion(request)
