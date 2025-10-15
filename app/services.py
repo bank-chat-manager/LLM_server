@@ -2,7 +2,7 @@ import httpx
 import json
 import asyncio
 from typing import List
-from .schemas import ConversationTurn, SummaryResponse, TaggingResponse, EmotionResponse
+from .schemas import Conversation, SummaryResponse, TaggingResponse, EmotionResponse
 from core.config import settings
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 
@@ -182,9 +182,13 @@ sentiment_analyzer = SentimentAnalyzer()
 
 # --- End of Hugging Face Model ---
 
-def _format_conversation(conversation: List[ConversationTurn]) -> str:
+def _format_conversation(conversation: Conversation) -> str:
     """Formats a list of conversation turns into a single string."""
-    return "\n".join([f"{turn.speaker}: {turn.text}" for turn in conversation])
+    convo_text = []
+    for turn in conversation:
+        for speaker, text in turn.items():
+            convo_text.append(f"{speaker}: {text}")
+    return "\n".join(convo_text)
 
 async def _call_ollama(prompt: str) -> str:
     """Helper function to call the Ollama API and get the response."""
@@ -220,7 +224,7 @@ async def _call_ollama(prompt: str) -> str:
             except Exception as e:
                 return f"알 수 없는 오류 발생: {e}"
 
-async def summarize_text(request: List[ConversationTurn]) -> SummaryResponse:
+async def summarize_text(request: Conversation) -> SummaryResponse:
     """Generates a summary for the given conversation using the batch processor."""
     full_text = _format_conversation(request)
     prompt = f"다음 상담 내용을 세 문장으로 요약해줘.\n\n---\n{full_text}\n---"
@@ -230,7 +234,7 @@ async def summarize_text(request: List[ConversationTurn]) -> SummaryResponse:
     
     return SummaryResponse(summary=summary)
 
-async def tag_keywords(request: List[ConversationTurn]) -> TaggingResponse:
+async def tag_keywords(request: Conversation) -> TaggingResponse:
     """Extracts keywords from the given conversation using the LLM with a few-shot prompt."""
     full_text = _format_conversation(request)
     
@@ -251,7 +255,7 @@ Output:'''
     
     return TaggingResponse(tags=tags)
 
-async def analyze_emotion(request: List[ConversationTurn]) -> EmotionResponse:
+async def analyze_emotion(request: Conversation) -> EmotionResponse:
     """Analyzes the emotion of the given conversation using the Hugging Face model."""
     full_text = _format_conversation(request)
     emotion = sentiment_analyzer.analyze(full_text)
