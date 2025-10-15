@@ -65,7 +65,7 @@ LLM_server/
 6. **qwen2:0.5b 다운로드**
 
     ```bash
-    ollama pull 
+    ollama pull qwen2:0.5b
     ```
 
 서버가 성공적으로 실행되면, 터미널에 `http://127.0.0.1:8000` 주소에서 애플리케이션이 실행 중이라는 메시지가 나타납니다.
