@@ -85,6 +85,9 @@ async def _call_ollama_batch(prompts: List[str]) -> List[str]:
 # --- Hugging Face Sentiment Analysis Model ---
 
 class SentimentAnalyzer:
+    """
+    감정 분석 모델 클래스 정의
+    """
     def __init__(self, model_name="nlptown/bert-base-multilingual-uncased-sentiment"):
         self.model_name = model_name
         self.pipeline = None  # 지연 로딩을 위해 아직 로딩 안함
@@ -108,6 +111,39 @@ class SentimentAnalyzer:
             return "중립"
         else:
             return "긍정"
+        
+
+class ConversationTagger:
+    """
+    태깅 모델 정의
+    """
+    def __init__(self, model_name="MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7"):
+        self.model_name = model_name
+        self.classifier = None
+        self.candidate_labels = [
+            '추천상품',
+            '예금',
+            '펀드',
+            '대출',
+            '외환',
+            '골드',
+            '신탁',
+            '보험',
+            '퇴직연금',
+            'ISA'
+        ]
+
+    def _load_model(self):
+        if self.classifier is None:
+            self.classifier = pipeline("zero-shot-classification", model="MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7")
+            print("태깅 모델 로딩 완료")
+    
+    def tagging(self, text:str) -> str:
+        self._load_model()
+        result = self.classifier(text, self.candidate_labels)
+        return result['labels'], result['scores']
+
+        
 
 class BatchProcessor:
     def __init__(self):
@@ -179,6 +215,7 @@ class BatchProcessor:
 # --- Service Instantiation ---
 batch_processor = BatchProcessor()
 sentiment_analyzer = SentimentAnalyzer()
+conversation_tagger = ConversationTagger()
 
 # --- End of Hugging Face Model ---
 
@@ -235,23 +272,11 @@ async def summarize_text(request: Conversation) -> SummaryResponse:
     return SummaryResponse(summary=summary)
 
 async def tag_keywords(request: Conversation) -> TaggingResponse:
-    """Extracts keywords from the given conversation using the LLM with a few-shot prompt."""
+    """classify conversations by pre-set labels"""
     full_text = _format_conversation(request)
-    
-    # Few-shot prompt to guide the model for better format compliance
-    prompt = f'''You are a bot that extracts only the core keywords from a given text. Follow the output format exactly.
-
-### Example
-Input: 안녕하세요, 자동차 보험 갱신 때문에 전화했습니다. 보험료가 얼마나 나올지 궁금하고, 추가적으로 할인받을 수 있는 방법이 있는지도 알려주세요.
-Output: 자동차 보험, 보험료, 갱신, 할인
-
-### Task
-Input: {full_text}
-Output:'''
-    
-    keyword_string = await _call_ollama(prompt)
-    
-    tags = [tag.strip() for tag in keyword_string.split(',') if tag.strip()]
+    tags, tag_scores = conversation_tagger.tagging(full_text)
+    print(tags, tag_scores)
+    tags = tags[0:2]
     
     return TaggingResponse(tags=tags)
 
